@@ -1,0 +1,63 @@
+#include "CTBot.h"
+#include <Servo.h>
+
+int SERVO_PIN = D4; // Pin connected to the servo
+int IR_SENSOR_PIN = D5; // Pin connected to the IR sensor
+CTBot myBot;
+TBMessage msg;
+String ssid  = "WIFI Username"; // Enter WiFi Username
+String pass  = "Wifi Password"; // Enter WiFi Password
+String token = "Token"; // Enter Your Telegram Bot Token
+
+Servo dispenserServo;
+bool irDetected = false;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(SERVO_PIN, OUTPUT);
+  pinMode(IR_SENSOR_PIN, INPUT);
+  dispenserServo.attach(SERVO_PIN);
+  dispenserServo.write(0); // Initial position
+
+  Serial.println("Starting TelegramBot...");
+  myBot.wifiConnect(ssid, pass);
+  myBot.setTelegramToken(token);
+  
+  if (myBot.testConnection()) {
+    Serial.println("\ntestConnection OK");
+  } else {
+    Serial.println("\ntestConnection NOK");
+  }
+}
+
+void rotateServo(int times) {
+  for (int i = 0; i < times; i++) {
+    dispenserServo.write(90); // Rotate to dispense
+    delay(1000); // Hold for 1 second
+    dispenserServo.write(0);  // Return to initial position
+    delay(1000); // Wait before next rotation
+  }
+}
+
+void loop() {
+  if (myBot.getNewMessage(msg)) {
+    if (msg.text.equalsIgnoreCase("100g")) {    
+      rotateServo(1); // Rotate once for 100g
+      Serial.println("Dispensed 100g");
+    }
+    if (msg.text.equalsIgnoreCase("200g")) {    
+      rotateServo(2); // Rotate twice for 200g
+      Serial.println("Dispensed 200g");
+    }
+  }
+
+  if (digitalRead(IR_SENSOR_PIN) == LOW && !irDetected) {
+    irDetected = true;
+    myBot.sendMessage(msg.sender.id, "IR Sensor detected motion!");
+    Serial.println("IR Sensor detected motion!");
+  } else if (digitalRead(IR_SENSOR_PIN) == HIGH) {
+    irDetected = false;
+  }
+
+  delay(10);
+}
